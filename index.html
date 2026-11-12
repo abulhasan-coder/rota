@@ -39,10 +39,24 @@ iframe{position:fixed;inset:0;width:100%;height:100%;border:0;background:#fff}
 <rect x="8" y="98" width="284" height="6" fill="#d6b25e"/><rect x="4" y="108" width="292" height="14" rx="4" fill="#ffffff"/>
 <circle cx="58" cy="132" r="26" fill="#05101f"/><circle cx="58" cy="132" r="11" fill="#d6b25e"/>
 <circle cx="232" cy="132" r="26" fill="#05101f"/><circle cx="232" cy="132" r="11" fill="#d6b25e"/></svg></div><div class="road"></div><div class="bot"><div class="c">دورة مشغلين الآليات</div></div></div>
-<iframe id="app" title="دورة مشغلين الآليات" src="https://script.google.com/macros/s/AKfycbwJuSjBBE4tcxYskRdGllFb87SKaMdYKyi7WatbZDnC5xG91iMrSV1Ve-kVJZ9lpxK83A/exec"></iframe>
+<script>
+/* حفظ الدخول هني: آيفون يمسح ذاكرة البرنامج الداخلي مع تسكير المتصفح. ما نرد إلا على صفحة البرنامج المعروضة داخل هالصفحة. */
+(function(){
+var K={kabd_session:1,kabd_device:1,kabd_request:1,kabd_app:1,kabd_last:1},RX=/^https:\/\/n-[a-z0-9]+-[a-z0-9]+-script\.googleusercontent\.com$/;
+function ok(){try{localStorage.setItem('kabd_t','1');localStorage.removeItem('kabd_t');return true}catch(e){return false}}
+addEventListener('message',function(ev){
+var d=ev.data,s=ev.source;if(!d||d.kabd!==1||!s||!RX.test(ev.origin))return;
+try{if(s.top!==window||s===window)return}catch(e){return}
+if(d.op==='load'&&typeof d.id==='string'&&d.id.length<=40){var o={},k;for(k in K){try{o[k]=localStorage.getItem(k)}catch(e){o[k]=null}}s.postMessage({kabd:1,op:'data',id:d.id,ok:ok(),data:o},ev.origin)}
+else if(d.op==='set'&&K[d.k]===1&&K.hasOwnProperty(d.k)){try{if(d.v===null)localStorage.removeItem(d.k);else if(typeof d.v==='string'&&d.v.length<3000000)localStorage.setItem(d.k,d.v)}catch(e){}}
+});
+})();
+</script>
+<iframe id="app" title="دورة مشغلين الآليات"></iframe>
 <script>
 var sp=document.getElementById('sp'),t0=Date.now();function hide(){sp.className='out'}
-document.getElementById('app').addEventListener('load',function(){setTimeout(hide,Math.max(300,2000-(Date.now()-t0)))});setTimeout(hide,8000);
+var fr=document.getElementById('app');if(window.top===window)fr.src='https://script.google.com/macros/s/AKfycbwJuSjBBE4tcxYskRdGllFb87SKaMdYKyi7WatbZDnC5xG91iMrSV1Ve-kVJZ9lpxK83A/exec';/* ما يشتغل إذا انعرضت الصفحة داخل موقع ثاني */
+fr.addEventListener('load',function(){setTimeout(hide,Math.max(300,2000-(Date.now()-t0)))});setTimeout(hide,8000);
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
 </script>
 </body></html>
