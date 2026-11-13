@@ -29,7 +29,7 @@ iframe{position:fixed;inset:0;width:100%;height:100%;border:0;background:#fff}
 #sp{z-index:5;transition:opacity .45s ease}
 #sp.out{opacity:0;pointer-events:none}
 </style></head><body>
-<div id="sp" role="status" aria-label="جاري التحميل"><div class="top"><div class="a">مركز كبد للإطفاء</div><div class="b">قسم (ب)</div></div><div class="art"><svg viewBox="0 -70 300 240" width="210" aria-hidden="true"><g transform="translate(150 -38) scale(.8)" fill="#d6b25e"><path d="M0,-34 L10,-11 L34,-10 L15,6 L21,30 L0,17 L-21,30 L-15,6 L-34,-10 L-10,-11 Z"/></g><g transform="translate(95 -28) scale(.45)" fill="#d6b25e"><path d="M0,-34 L10,-11 L34,-10 L15,6 L21,30 L0,17 L-21,30 L-15,6 L-34,-10 L-10,-11 Z"/></g><g transform="translate(205 -28) scale(.45)" fill="#d6b25e"><path d="M0,-34 L10,-11 L34,-10 L15,6 L21,30 L0,17 L-21,30 L-15,6 L-34,-10 L-10,-11 Z"/></g><defs><radialGradient id="fl" cx="50%" cy="50%" r="50%" gradientTransform="translate(.5 .5) scale(1 1.9) translate(-.5 -.5)"><stop offset="0" stop-color="#ffffff"/><stop offset=".28" stop-color="#ffffff"/><stop offset=".55" stop-color="#ffb3b3"/><stop offset=".8" stop-color="#f25a5a"/><stop offset="1" stop-color="#d92b2b"/></radialGradient><radialGradient id="gl" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ff5a5a" stop-opacity=".38"/><stop offset=".55" stop-color="#ff4040" stop-opacity=".14"/><stop offset="1" stop-color="#ff4040" stop-opacity="0"/></radialGradient></defs><filter id="bl" x="-60%" y="-200%" width="220%" height="500%"><feGaussianBlur stdDeviation="3.6"/></filter><rect x="31" y="15" width="46" height="17" rx="7" fill="#e23030" opacity=".8" filter="url(#bl)"/><rect x="34" y="18" width="40" height="11" rx="4" fill="url(#fl)"/>
+<div id="sp" role="status" aria-label="جاري التحميل"><div class="top"><div class="a">مركز كبد للإطفاء</div><div class="b" id="spDept"></div></div><div class="art"><svg viewBox="0 -70 300 240" width="210" aria-hidden="true"><g transform="translate(150 -38) scale(.8)" fill="#d6b25e"><path d="M0,-34 L10,-11 L34,-10 L15,6 L21,30 L0,17 L-21,30 L-15,6 L-34,-10 L-10,-11 Z"/></g><g transform="translate(95 -28) scale(.45)" fill="#d6b25e"><path d="M0,-34 L10,-11 L34,-10 L15,6 L21,30 L0,17 L-21,30 L-15,6 L-34,-10 L-10,-11 Z"/></g><g transform="translate(205 -28) scale(.45)" fill="#d6b25e"><path d="M0,-34 L10,-11 L34,-10 L15,6 L21,30 L0,17 L-21,30 L-15,6 L-34,-10 L-10,-11 Z"/></g><defs><radialGradient id="fl" cx="50%" cy="50%" r="50%" gradientTransform="translate(.5 .5) scale(1 1.9) translate(-.5 -.5)"><stop offset="0" stop-color="#ffffff"/><stop offset=".28" stop-color="#ffffff"/><stop offset=".55" stop-color="#ffb3b3"/><stop offset=".8" stop-color="#f25a5a"/><stop offset="1" stop-color="#d92b2b"/></radialGradient><radialGradient id="gl" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ff5a5a" stop-opacity=".38"/><stop offset=".55" stop-color="#ff4040" stop-opacity=".14"/><stop offset="1" stop-color="#ff4040" stop-opacity="0"/></radialGradient></defs><filter id="bl" x="-60%" y="-200%" width="220%" height="500%"><feGaussianBlur stdDeviation="3.6"/></filter><rect x="31" y="15" width="46" height="17" rx="7" fill="#e23030" opacity=".8" filter="url(#bl)"/><rect x="34" y="18" width="40" height="11" rx="4" fill="url(#fl)"/>
 <rect x="95" y="18" width="190" height="10" rx="3" fill="#d6b25e"/><rect x="95" y="34" width="190" height="10" rx="3" fill="#d6b25e"/>
 <rect x="105" y="18" width="8" height="26" fill="#d6b25e"/><rect x="127" y="18" width="8" height="26" fill="#d6b25e"/><rect x="149" y="18" width="8" height="26" fill="#d6b25e"/><rect x="171" y="18" width="8" height="26" fill="#d6b25e"/><rect x="193" y="18" width="8" height="26" fill="#d6b25e"/><rect x="215" y="18" width="8" height="26" fill="#d6b25e"/><rect x="237" y="18" width="8" height="26" fill="#d6b25e"/><rect x="259" y="18" width="8" height="26" fill="#d6b25e"/><rect x="281" y="18" width="8" height="26" fill="#d6b25e"/>
 <path d="M8 120 V70 Q8 50 28 46 L70 40 Q82 38 86 50 L92 60 V120 Z" fill="#c62828"/>
@@ -42,7 +42,9 @@ iframe{position:fixed;inset:0;width:100%;height:100%;border:0;background:#fff}
 <script>
 /* حفظ الدخول هني: آيفون يمسح ذاكرة البرنامج الداخلي مع تسكير المتصفح. ما نرد إلا على صفحة البرنامج المعروضة داخل هالصفحة. */
 (function(){
-var K={kabd_session:1,kabd_device:1,kabd_request:1,kabd_app:1,kabd_last:1},RX=/^https:\/\/n-[a-z0-9]+-[a-z0-9]+-script\.googleusercontent\.com$/;
+/* المفاتيح المسموحة بس: قسم (ب) بأسمائه القديمة، وقسم (أ)/(ج) ببادئة القسم، والمؤسس، واختيار القسم */
+var K={kabd_dept:1,kabd_F_session:1,kabd_F_device:1};['kabd_','kabd_A_','kabd_C_'].forEach(function(p){['session','device','request','app','last'].forEach(function(b){K[p+b]=1})});
+var RX=/^https:\/\/n-[a-z0-9]+-[a-z0-9]+-script\.googleusercontent\.com$/;
 function ok(){try{localStorage.setItem('kabd_t','1');localStorage.removeItem('kabd_t');return true}catch(e){return false}}
 addEventListener('message',function(ev){
 var d=ev.data,s=ev.source;if(!d||d.kabd!==1||!s||!RX.test(ev.origin))return;
@@ -55,7 +57,12 @@ else if(d.op==='set'&&K[d.k]===1&&K.hasOwnProperty(d.k)){try{if(d.v===null)local
 <iframe id="app" title="دورة مشغلين الآليات"></iframe>
 <script>
 var sp=document.getElementById('sp'),t0=Date.now();function hide(){sp.className='out'}
-var fr=document.getElementById('app');if(window.top===window)fr.src='https://script.google.com/macros/s/AKfycbwJuSjBBE4tcxYskRdGllFb87SKaMdYKyi7WatbZDnC5xG91iMrSV1Ve-kVJZ9lpxK83A/exec';/* ما يشتغل إذا انعرضت الصفحة داخل موقع ثاني */
+/* الرابط المباشر: ?d=A / ?d=B / ?d=C أو ?p=f (هالقيم بس) تنمرر للبرنامج. شاشة البداية تكتب القسم المحفوظ أو اللي بالرابط. */
+var q=new URLSearchParams(location.search),qd=/^[ABC]$/.test(q.get('d')||'')?q.get('d'):'',qf=q.get('p')==='f',pass=qf?'?p=f':qd?'?d='+qd:'';
+var sd='';try{sd=localStorage.getItem('kabd_dept')||(localStorage.getItem('kabd_session')?'B':'')}catch(e){}
+var LB={A:'قسم (أ)',B:'قسم (ب)',C:'قسم (ج)'},lb=qf?'المؤسس':(LB.hasOwnProperty(sd)?LB[sd]:LB.hasOwnProperty(qd)?LB[qd]:'');
+document.getElementById('spDept').textContent=lb;if(!lb)document.getElementById('spDept').hidden=true;
+var fr=document.getElementById('app');if(window.top===window)fr.src='https://script.google.com/macros/s/AKfycbwJuSjBBE4tcxYskRdGllFb87SKaMdYKyi7WatbZDnC5xG91iMrSV1Ve-kVJZ9lpxK83A/exec'+pass;/* ما يشتغل إذا انعرضت الصفحة داخل موقع ثاني */
 fr.addEventListener('load',function(){setTimeout(hide,Math.max(300,2000-(Date.now()-t0)))});setTimeout(hide,8000);
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
 </script>
