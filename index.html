@@ -22,6 +22,9 @@ html,body{margin:0;height:100%}
 .a{font-size:38px;font-weight:bold}.b{font-size:30px;opacity:.95;margin-top:-2px}.art{margin:22px 0 14px}.art svg{width:210px;display:block}.c{font-size:30px;font-weight:bold;color:#d6b25e}
 #sp{background:linear-gradient(180deg,#7a141c 0%,#3a1230 22%,#0d2347 46%,#1d3d75 62%,#0a1c3b 62.2%,#061126 100%);justify-content:flex-start;gap:0}
 .top{margin-top:120px}.a{font-size:44px}.b{font-size:32px;margin-top:8px}
+/* العنوانين فوق، وبينهم وبين النجوم مسافة واضحة بكل الأطوال (النجوم تبدأ تقريباً عند 62% من الطول ناقص 194px) */
+.top{margin-top:clamp(16px,calc(62vh - 380px),72px)}.a,.b{line-height:1.3}.b{margin-top:2px}.top:after{margin-top:12px}
+@media (max-height:620px){.a{font-size:36px}.b{font-size:27px}.top:after{margin-top:8px}}
 .top:after{content:"";display:block;width:120px;height:3px;background:#d6b25e;margin:18px auto 0;border-radius:2px}
 .art{position:absolute;left:0;right:0;top:62%;margin:0;transform:translateY(-83%);display:flex;justify-content:center}.art svg{width:300px;overflow:visible}
 .road{position:absolute;left:0;right:0;top:calc(62% + 34px);height:6px;background:repeating-linear-gradient(90deg,#d6b25e 0 34px,transparent 34px 62px);opacity:.8}
