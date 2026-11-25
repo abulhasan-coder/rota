@@ -49,7 +49,7 @@ iframe{position:fixed;inset:0;width:100%;height:100%;border:0;background:#fff}
 /* حفظ الدخول هني: آيفون يمسح ذاكرة البرنامج الداخلي مع تسكير المتصفح. ما نرد إلا على صفحة البرنامج المعروضة داخل هالصفحة. */
 (function(){
 /* المفاتيح المسموحة بس: قسم (ب) بأسمائه القديمة، وقسم (أ)/(ج) ببادئة القسم، والمؤسس، واختيار القسم */
-var K={kabd_dept:1,kabd_F_session:1,kabd_F_device:1,kabd_F_seen:1};['kabd_','kabd_A_','kabd_C_'].forEach(function(p){['session','device','request','app','last','cards'].forEach(function(b){K[p+b]=1})});
+var K={kabd_dept:1,kabd_F_session:1,kabd_F_device:1,kabd_F_seen:1,kabd_look:1};['kabd_','kabd_A_','kabd_C_'].forEach(function(p){['session','device','request','app','last','cards'].forEach(function(b){K[p+b]=1})});
 var RX=/^https:\/\/n-[a-z0-9]+-[a-z0-9]+-script\.googleusercontent\.com$/;
 function ok(){try{localStorage.setItem('kabd_t','1');localStorage.removeItem('kabd_t');return true}catch(e){return false}}
 addEventListener('message',function(ev){
@@ -60,7 +60,7 @@ else if(d.op==='set'&&K[d.k]===1&&K.hasOwnProperty(d.k)){try{if(d.v===null)local
 });
 })();
 </script>
-<iframe id="app" title="متابعة القسم"></iframe>
+<iframe id="app" title="متابعة القسم" allow="microphone https://script.google.com"></iframe>
 <script>
 var sp=document.getElementById('sp'),t0=Date.now();function hide(){sp.className='out'}
 /* الرابط المباشر: ?d=A / ?d=B / ?d=C أو ?p=f (هالقيم بس) تنمرر للبرنامج. شاشة البداية تكتب القسم المحفوظ أو اللي بالرابط. */
