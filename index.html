@@ -76,7 +76,8 @@ var TYPES=['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg;codecs=o
 try{if(navigator.mediaDevices&&window.MediaRecorder)TYPES.some(function(t){try{if(MediaRecorder.isTypeSupported(t)){mime=t;return true}}catch(e){}return false})}catch(e){}
 var req=null,st=null,box=null,gen=0;
 /* النص المباشر (ك-١..ك-٧): التعرف على الكلام بمكان واحد، ar-KW ثابت، بدون serviceURI ولا grammars. يبدأ بس بعد "ابدأ" من البرنامج + ضغطة حقيقية.
- * علامة ظاهرة طول الاستماع. الإعادة بعد السكتة داخل نفس الجلسة بس و١٢٠ ثانية بالكثير من أول ضغطة. النص للنافذة الطالبة بس. ولا تخزين ولا سجل */
+ * علامة ظاهرة طول الاستماع. الإعادة بعد السكتة داخل نفس الجلسة بس و١٢٠ ثانية بالكثير من أول ضغطة. النص للنافذة الطالبة بس. ولا تخزين ولا سجل.
+ * النص المتغير (اللي ما ثبت) ينحفظ مع الثابت وما يضيع. المحلي إذا خلص بدون أي نتيجة ← الخدمة العادية بنفس الجلسة. والنهائي الفاضي = خطأ 'speech' (البرنامج يرجع للتسجيل). */
 var SR=window.SpeechRecognition||window.webkitSpeechRecognition||null,TXT_MAX=400,sx=null;
 function join(a,b){return (a+' '+b).replace(/\s+/g,' ').trim().slice(0,TXT_MAX)}
 function spUi(on){
@@ -84,18 +85,18 @@ mkbox('تحويل الكلام لنص لعون');
 var row=el('div','mr');box.appendChild(el('div','mt',on?'● يسمع…':'عون يبي يسمعك'));box.appendChild(row);
 var a=el('button','ok',on?'إيقاف':'ابدأ');a.type='button';a.id=on?'spStop':'spGo';a.onclick=on?function(){spStop()}:function(){if(req&&!sx)spStart()};row.appendChild(a);
 var c=el('button','no','إلغاء');c.type='button';c.id='spNo';c.onclick=function(){end('cancel')};row.appendChild(c)}
-function spStart(){gen++;sx={base:'',cur:'',t0:Date.now(),local:true,stop:false,n:0,r:null,iv:setInterval(function(){if(sx&&Date.now()-sx.t0>=MAX_SEC*1000)spStop()},500)};spUi(true);spRun()}
+function spStart(){gen++;sx={base:'',cur:'',got:false,t0:Date.now(),local:true,stop:false,n:0,r:null,iv:setInterval(function(){if(sx&&Date.now()-sx.t0>=MAX_SEC*1000)spStop()},500)};spUi(true);spRun()}
 function spRun(){
 var r,x=sx;try{r=new SR()}catch(e){return end('speech')}
 r.lang='ar-KW';r.interimResults=true;r.continuous=!/Android/i.test(navigator.userAgent);
 var local=x.local&&('processLocally' in r);if(local)r.processLocally=true; /* التحويل داخل الجهاز أول إذا المتصفح يدعمه */
 x.r=r;x.cur='';
-r.onresult=function(e){if(sx!==x||x.r!==r)return;var f='',i='',k,a,t;for(k=0;k<e.results.length;k++){a=e.results[k];t=a&&a[0]&&typeof a[0].transcript==='string'?a[0].transcript:'';if(a&&a.isFinal)f+=' '+t;else i+=' '+t}x.cur=f;send({kabd:1,op:'mic',t:'text',text:join(x.base,f+i),fin:false})};
+r.onresult=function(e){if(sx!==x||x.r!==r)return;var f='',i='',k,a,t;for(k=0;k<e.results.length;k++){a=e.results[k];t=a&&a[0]&&typeof a[0].transcript==='string'?a[0].transcript:'';if(a&&a.isFinal)f+=' '+t;else i+=' '+t}var all=join(f,i);if(all){x.cur=all;x.got=true}send({kabd:1,op:'mic',t:'text',text:join(x.base,x.cur),fin:false})};
 r.onerror=function(e){if(sx!==x||x.r!==r)return;var c=e&&e.error;if(c==='no-speech'||c==='aborted')return;if(c==='not-allowed'||c==='audio-capture')return end('denied');if(local){x.local=false;return}end(c==='network'?'net':c==='service-not-allowed'?'denied':'speech')};
-r.onend=function(){if(sx!==x||x.r!==r)return;x.base=join(x.base,x.cur);x.cur='';if(x.stop||Date.now()-x.t0>=MAX_SEC*1000||++x.n>60)return spDone();spRun()};
+r.onend=function(){if(sx!==x||x.r!==r)return;x.base=join(x.base,x.cur);x.cur='';if(x.stop||Date.now()-x.t0>=MAX_SEC*1000||++x.n>60)return spDone();if(local&&!x.got)x.local=false;spRun()};
 try{r.start()}catch(e){if(local){x.local=false;return spRun()}end('speech')}}
 function spStop(){var x=sx;if(!x||x.stop)return;x.stop=true;try{x.r.stop()}catch(e){return spDone()}setTimeout(function(){if(sx===x)spDone()},2500)}
-function spDone(){if(!sx)return;send({kabd:1,op:'mic',t:'text',text:join(sx.base,sx.cur),fin:true});clean()}
+function spDone(){if(!sx)return;var t=join(sx.base,sx.cur);if(!t)return end('speech');send({kabd:1,op:'mic',t:'text',text:t,fin:true});clean()}
 function spKill(){var x=sx;if(!x)return;sx=null;clearInterval(x.iv);try{x.r.onresult=x.r.onerror=x.r.onend=null;x.r.abort()}catch(e){}}
 function mkbox(label){if(!box){box=el('div','mic');box.setAttribute('role','dialog');document.body.appendChild(box)}box.setAttribute('aria-label',label);box.textContent='';box.hidden=false}
 function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x)e.textContent=x;return e}
