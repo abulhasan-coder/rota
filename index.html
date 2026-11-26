@@ -60,9 +60,11 @@ function ok(){try{localStorage.setItem('kabd_t','1');localStorage.removeItem('ka
 addEventListener('message',function(ev){
 var d=ev.data,s=ev.source;if(!d||d.kabd!==1||!s||!RX.test(ev.origin))return;
 try{if(s.top!==window||s===window)return}catch(e){return}
-if(d.op==='load'&&typeof d.id==='string'&&d.id.length<=40){var o={},k;for(k in K){try{o[k]=localStorage.getItem(k)}catch(e){o[k]=null}}s.postMessage({kabd:1,op:'data',id:d.id,ok:ok(),data:o},ev.origin);if(M.can&&!SCR)s.postMessage({kabd:1,op:'mic',t:'ready'},ev.origin)}
+if(d.op==='load'&&typeof d.id==='string'&&d.id.length<=40){var o={},k;for(k in K){try{o[k]=localStorage.getItem(k)}catch(e){o[k]=null}}s.postMessage({kabd:1,op:'data',id:d.id,ok:ok(),data:o},ev.origin);if(M.can&&!SCR)s.postMessage({kabd:1,op:'mic',t:'ready'},ev.origin);if(M.sp&&!SCR)s.postMessage({kabd:1,op:'mic',t:'speech'},ev.origin)}
 else if(d.op==='set'&&K[d.k]===1&&K.hasOwnProperty(d.k)){try{if(d.v===null)localStorage.removeItem(d.k);else if(typeof d.v==='string'&&d.v.length<3000000)localStorage.setItem(d.k,d.v)}catch(e){}}
 else if(d.op==='mic'&&d.t==='start')M.start(s,ev.origin);
+else if(d.op==='mic'&&d.t==='listen')M.listen(s,ev.origin);
+else if(d.op==='mic'&&d.t==='stop')M.stop(s);
 else if(d.op==='mic'&&d.t==='cancel')M.cancel(s);
 });
 /* مايك عون (قرار مايك عون بالتطبيق المثبت، ب-١..ب-٧): الصفحة تسجل بدال البرنامج (الإطار ما عنده إذن المايك).
@@ -73,12 +75,34 @@ var M=(function(){
 var TYPES=['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg;codecs=opus','audio/ogg'],MAX_SEC=120,MAX_B=3*1024*1024,mime='';
 try{if(navigator.mediaDevices&&window.MediaRecorder)TYPES.some(function(t){try{if(MediaRecorder.isTypeSupported(t)){mime=t;return true}}catch(e){}return false})}catch(e){}
 var req=null,st=null,box=null,gen=0;
+/* النص المباشر (ك-١..ك-٧): التعرف على الكلام بمكان واحد، ar-KW ثابت، بدون serviceURI ولا grammars. يبدأ بس بعد "ابدأ" من البرنامج + ضغطة حقيقية.
+ * علامة ظاهرة طول الاستماع. الإعادة بعد السكتة داخل نفس الجلسة بس و١٢٠ ثانية بالكثير من أول ضغطة. النص للنافذة الطالبة بس. ولا تخزين ولا سجل */
+var SR=window.SpeechRecognition||window.webkitSpeechRecognition||null,TXT_MAX=400,sx=null;
+function join(a,b){return (a+' '+b).replace(/\s+/g,' ').trim().slice(0,TXT_MAX)}
+function spUi(on){
+mkbox('تحويل الكلام لنص لعون');
+var row=el('div','mr');box.appendChild(el('div','mt',on?'● يسمع…':'عون يبي يسمعك'));box.appendChild(row);
+var a=el('button','ok',on?'إيقاف':'ابدأ');a.type='button';a.id=on?'spStop':'spGo';a.onclick=on?function(){spStop()}:function(){if(req&&!sx)spStart()};row.appendChild(a);
+var c=el('button','no','إلغاء');c.type='button';c.id='spNo';c.onclick=function(){end('cancel')};row.appendChild(c)}
+function spStart(){gen++;sx={base:'',cur:'',t0:Date.now(),local:true,stop:false,n:0,r:null,iv:setInterval(function(){if(sx&&Date.now()-sx.t0>=MAX_SEC*1000)spStop()},500)};spUi(true);spRun()}
+function spRun(){
+var r,x=sx;try{r=new SR()}catch(e){return end('speech')}
+r.lang='ar-KW';r.interimResults=true;r.continuous=!/Android/i.test(navigator.userAgent);
+var local=x.local&&('processLocally' in r);if(local)r.processLocally=true; /* التحويل داخل الجهاز أول إذا المتصفح يدعمه */
+x.r=r;x.cur='';
+r.onresult=function(e){if(sx!==x||x.r!==r)return;var f='',i='',k,a,t;for(k=0;k<e.results.length;k++){a=e.results[k];t=a&&a[0]&&typeof a[0].transcript==='string'?a[0].transcript:'';if(a&&a.isFinal)f+=' '+t;else i+=' '+t}x.cur=f;send({kabd:1,op:'mic',t:'text',text:join(x.base,f+i),fin:false})};
+r.onerror=function(e){if(sx!==x||x.r!==r)return;var c=e&&e.error;if(c==='no-speech'||c==='aborted')return;if(c==='not-allowed'||c==='audio-capture')return end('denied');if(local){x.local=false;return}end(c==='network'?'net':c==='service-not-allowed'?'denied':'speech')};
+r.onend=function(){if(sx!==x||x.r!==r)return;x.base=join(x.base,x.cur);x.cur='';if(x.stop||Date.now()-x.t0>=MAX_SEC*1000||++x.n>60)return spDone();spRun()};
+try{r.start()}catch(e){if(local){x.local=false;return spRun()}end('speech')}}
+function spStop(){var x=sx;if(!x||x.stop)return;x.stop=true;try{x.r.stop()}catch(e){return spDone()}setTimeout(function(){if(sx===x)spDone()},2500)}
+function spDone(){if(!sx)return;send({kabd:1,op:'mic',t:'text',text:join(sx.base,sx.cur),fin:true});clean()}
+function spKill(){var x=sx;if(!x)return;sx=null;clearInterval(x.iv);try{x.r.onresult=x.r.onerror=x.r.onend=null;x.r.abort()}catch(e){}}
+function mkbox(label){if(!box){box=el('div','mic');box.setAttribute('role','dialog');document.body.appendChild(box)}box.setAttribute('aria-label',label);box.textContent='';box.hidden=false}
 function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x)e.textContent=x;return e}
 function live(w){try{return !!w&&w.top===window&&w!==window}catch(e){return false}} /* نفس فحص المصدر فوق: للحين داخل هالصفحة */
 function send(m){var r=req;if(!r)return;if(!live(r.s))return;try{r.s.postMessage(m,r.o)}catch(e){}}
 function ui(rec){
-if(!box){box=el('div','mic');box.setAttribute('role','dialog');box.setAttribute('aria-label','تسجيل صوت لعون');document.body.appendChild(box)}
-box.textContent='';box.hidden=false;
+mkbox('تسجيل صوت لعون');
 var t=el('div','mt',rec?'● يسجّل…':'عون يبي يسجّل صوتك'),tm=el('b','mtm',rec?'0:00':''),row=el('div','mr');
 box.appendChild(t);if(rec)box.appendChild(tm);box.appendChild(row);
 if(rec){var a=el('button','ok','خلصت');a.type='button';a.id='micDone';a.onclick=function(){stop(true)};row.appendChild(a)}
@@ -86,7 +110,7 @@ else{var g=el('button','ok','سجّل');g.type='button';g.id='micGo';g.onclick=f
 var c=el('button','no','إلغاء');c.type='button';c.id='micNo';c.onclick=function(){end('cancel')};row.appendChild(c);
 return tm}
 function end(code){if(code&&req)send({kabd:1,op:'mic',t:'error',c:code});stop(false);clean()}
-function clean(){gen++;if(st){try{clearInterval(st.iv)}catch(e){}try{st.mr.ondataavailable=null;st.mr.onstop=null;if(st.mr.state!=='inactive')st.mr.stop()}catch(e){}try{st.stream.getTracks().forEach(function(x){x.stop()})}catch(e){}st.chunks=[];st=null}req=null;if(box){box.hidden=true;box.textContent=''}}
+function clean(){gen++;spKill();if(st){try{clearInterval(st.iv)}catch(e){}try{st.mr.ondataavailable=null;st.mr.onstop=null;if(st.mr.state!=='inactive')st.mr.stop()}catch(e){}try{st.stream.getTracks().forEach(function(x){x.stop()})}catch(e){}st.chunks=[];st=null}req=null;if(box){box.hidden=true;box.textContent=''}}
 function rec0(){
 var my=++gen;
 navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
@@ -107,7 +131,11 @@ mr.start(1000)
 function stop(ok){if(!st)return;st.send=!!ok;try{if(st.mr.state!=='inactive')st.mr.stop();else if(!ok)clean()}catch(e){clean()}}
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'&&(req||st))end('cancel')});
 addEventListener('pagehide',function(){if(req||st)end('cancel')});
-return{can:!!mime,
+return{can:!!mime,sp:!!SR,
+listen:function(s,o){if(!SR||SCR)return;if(req||st){try{s.postMessage({kabd:1,op:'mic',t:'error',c:'busy'},o)}catch(e){}return}if(!live(s))return;req={s:s,o:o};
+var act=false;try{act=!!(navigator.userActivation&&navigator.userActivation.isActive)}catch(e){}
+if(act)spStart();else spUi(false)},
+stop:function(s){if(req&&req.s===s&&sx)spStop()},
 start:function(s,o){if(!mime||SCR)return;if(req||st){try{s.postMessage({kabd:1,op:'mic',t:'error',c:'busy'},o)}catch(e){}return}if(!live(s))return;req={s:s,o:o};
 var act=false;try{act=!!(navigator.userActivation&&navigator.userActivation.isActive)}catch(e){}
 if(act)rec0();else ui(false)},
