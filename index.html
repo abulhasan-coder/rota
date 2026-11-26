@@ -53,13 +53,14 @@ iframe{position:fixed;inset:0;width:100%;height:100%;border:0;background:#fff}
 /* حفظ الدخول هني: آيفون يمسح ذاكرة البرنامج الداخلي مع تسكير المتصفح. ما نرد إلا على صفحة البرنامج المعروضة داخل هالصفحة. */
 (function(){
 /* المفاتيح المسموحة بس: قسم (ب) بأسمائه القديمة، وقسم (أ)/(ج) ببادئة القسم، والمؤسس، واختيار القسم */
-var K={kabd_dept:1,kabd_F_session:1,kabd_F_device:1,kabd_F_seen:1,kabd_look:1};['kabd_','kabd_A_','kabd_C_'].forEach(function(p){['session','device','request','app','last','cards'].forEach(function(b){K[p+b]=1})});
+var K={kabd_dept:1,kabd_F_session:1,kabd_F_device:1,kabd_F_seen:1,kabd_look:1,kabd_S_session:1,kabd_S_device:1};/* kabd_S_*: شاشة العرض (?p=s) */['kabd_','kabd_A_','kabd_C_'].forEach(function(p){['session','device','request','app','last','cards'].forEach(function(b){K[p+b]=1})});
+var SCR=new URLSearchParams(location.search).get('p')==='s'; /* شاشة العرض: ولا مايك */
 var RX=/^https:\/\/n-[a-z0-9]+-[a-z0-9]+-script\.googleusercontent\.com$/;
 function ok(){try{localStorage.setItem('kabd_t','1');localStorage.removeItem('kabd_t');return true}catch(e){return false}}
 addEventListener('message',function(ev){
 var d=ev.data,s=ev.source;if(!d||d.kabd!==1||!s||!RX.test(ev.origin))return;
 try{if(s.top!==window||s===window)return}catch(e){return}
-if(d.op==='load'&&typeof d.id==='string'&&d.id.length<=40){var o={},k;for(k in K){try{o[k]=localStorage.getItem(k)}catch(e){o[k]=null}}s.postMessage({kabd:1,op:'data',id:d.id,ok:ok(),data:o},ev.origin);if(M.can)s.postMessage({kabd:1,op:'mic',t:'ready'},ev.origin)}
+if(d.op==='load'&&typeof d.id==='string'&&d.id.length<=40){var o={},k;for(k in K){try{o[k]=localStorage.getItem(k)}catch(e){o[k]=null}}s.postMessage({kabd:1,op:'data',id:d.id,ok:ok(),data:o},ev.origin);if(M.can&&!SCR)s.postMessage({kabd:1,op:'mic',t:'ready'},ev.origin)}
 else if(d.op==='set'&&K[d.k]===1&&K.hasOwnProperty(d.k)){try{if(d.v===null)localStorage.removeItem(d.k);else if(typeof d.v==='string'&&d.v.length<3000000)localStorage.setItem(d.k,d.v)}catch(e){}}
 else if(d.op==='mic'&&d.t==='start')M.start(s,ev.origin);
 else if(d.op==='mic'&&d.t==='cancel')M.cancel(s);
@@ -107,7 +108,7 @@ function stop(ok){if(!st)return;st.send=!!ok;try{if(st.mr.state!=='inactive')st.
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'&&(req||st))end('cancel')});
 addEventListener('pagehide',function(){if(req||st)end('cancel')});
 return{can:!!mime,
-start:function(s,o){if(!mime)return;if(req||st){try{s.postMessage({kabd:1,op:'mic',t:'error',c:'busy'},o)}catch(e){}return}if(!live(s))return;req={s:s,o:o};
+start:function(s,o){if(!mime||SCR)return;if(req||st){try{s.postMessage({kabd:1,op:'mic',t:'error',c:'busy'},o)}catch(e){}return}if(!live(s))return;req={s:s,o:o};
 var act=false;try{act=!!(navigator.userActivation&&navigator.userActivation.isActive)}catch(e){}
 if(act)rec0();else ui(false)},
 cancel:function(s){if(req&&req.s===s)end('')},
@@ -119,10 +120,10 @@ document.addEventListener('DOMContentLoaded',function(){document.getElementById(
 <iframe id="app" title="متابعة القسم"></iframe>
 <script>
 var sp=document.getElementById('sp'),t0=Date.now();function hide(){sp.className='out'}
-/* الرابط المباشر: ?d=A / ?d=B / ?d=C أو ?p=f (هالقيم بس) تنمرر للبرنامج. شاشة البداية تكتب القسم المحفوظ أو اللي بالرابط. */
-var q=new URLSearchParams(location.search),qd=/^[ABC]$/.test(q.get('d')||'')?q.get('d'):'',qf=q.get('p')==='f',pass=qf?'?p=f':qd?'?d='+qd:'';
+/* الرابط المباشر: ?d=A / ?d=B / ?d=C أو ?p=f أو ?p=s (هالقيم بالضبط بس، وحدة منها) تنمرر للبرنامج. شاشة البداية تكتب القسم المحفوظ أو اللي بالرابط. */
+var q=new URLSearchParams(location.search),qd=/^[ABC]$/.test(q.get('d')||'')?q.get('d'):'',qf=q.get('p')==='f',qs=q.get('p')==='s',pass=qf?'?p=f':qs?'?p=s':qd?'?d='+qd:'';
 var sd='';try{sd=localStorage.getItem('kabd_dept')||(localStorage.getItem('kabd_session')?'B':'')}catch(e){}
-var LB={A:'قسم (أ)',B:'قسم (ب)',C:'قسم (ج)'},lb=qf?'المؤسس':(LB.hasOwnProperty(sd)?LB[sd]:LB.hasOwnProperty(qd)?LB[qd]:'');
+var LB={A:'قسم (أ)',B:'قسم (ب)',C:'قسم (ج)'},lb=qf?'المؤسس':qs?'شاشة العرض':(LB.hasOwnProperty(sd)?LB[sd]:LB.hasOwnProperty(qd)?LB[qd]:'');
 document.getElementById('spDept').textContent=lb;if(!lb)document.getElementById('spDept').hidden=true;
 var fr=document.getElementById('app');if(window.top===window)fr.src='https://script.google.com/macros/s/AKfycbwJuSjBBE4tcxYskRdGllFb87SKaMdYKyi7WatbZDnC5xG91iMrSV1Ve-kVJZ9lpxK83A/exec'+pass;/* ما يشتغل إذا انعرضت الصفحة داخل موقع ثاني */
 fr.addEventListener('load',function(){setTimeout(hide,Math.max(300,2000-(Date.now()-t0)))});setTimeout(hide,8000);
