@@ -79,7 +79,9 @@ try{if(navigator.mediaDevices&&window.MediaRecorder)TYPES.some(function(t){try{i
 var req=null,st=null,box=null,gen=0;
 /* النص المباشر (ك-١..ك-٧): التعرف على الكلام بمكان واحد، ar-KW ثابت، بدون serviceURI ولا grammars. يبدأ بس بعد "ابدأ" من البرنامج + ضغطة حقيقية.
  * علامة ظاهرة طول الاستماع. الإعادة بعد السكتة داخل نفس الجلسة بس و١٢٠ ثانية بالكثير من أول ضغطة. النص للنافذة الطالبة بس. ولا تخزين ولا سجل.
- * النص المتغير (اللي ما ثبت) ينحفظ مع الثابت وما يضيع. المحلي إذا خلص بدون أي نتيجة ← الخدمة العادية بنفس الجلسة. والنهائي الفاضي = خطأ 'speech' (البرنامج يرجع للتسجيل). */
+ * النص المتغير (اللي ما ثبت) ينحفظ مع الثابت وما يضيع. والنهائي الفاضي = خطأ 'speech' (البرنامج يرجع للتسجيل).
+ * المحلي (processLocally) بس إذا available ردت "available" بالضبط لـ ar-KW (بدون تنزيل حزمة). وإذا فشل بأي خطأ غير aborted، أو سكت، أو خلص بدون نتيجة
+ * ← الخدمة العادية مرة وحدة بنفس الجلسة وبكائن جديد (من onerror نفسه، بدون انتظار onend). حارس وقت إذا ما تنادى شي بعد start. والعادية إذا رفضت not-allowed ← زر "تكلم". */
 var SR=window.SpeechRecognition||window.webkitSpeechRecognition||null,TXT_MAX=400,sx=null;
 function join(a,b){return (a+' '+b).replace(/\s+/g,' ').trim().slice(0,TXT_MAX)}
 function spUi(on){
@@ -87,21 +89,35 @@ mkbox('تحويل الكلام لنص لعون');
 var row=el('div','mr');box.appendChild(el('div','mt',on?'● يسمع…':'عون يبي يسمعك'));box.appendChild(row);
 var a=el('button','ok',on?'إيقاف':'ابدأ');a.type='button';a.id=on?'spStop':'spGo';a.onclick=on?function(){spStop()}:function(){if(req&&!sx)spStart()};row.appendChild(a);
 var c=el('button','no','إلغاء');c.type='button';c.id='spNo';c.onclick=function(){end('cancel')};row.appendChild(c)}
-function spStart(){gen++;sx={base:'',cur:'',got:false,t0:Date.now(),local:true,stop:false,n:0,r:null,why:'',na:0,a:[],pl:0,iv:setInterval(function(){if(sx&&Date.now()-sx.t0>=MAX_SEC*1000){if(!sx.why)sx.why='T';spStop()}},500)};spUi(true);spRun()}
+function spStart(){gen++;sx={base:'',cur:'',got:false,t0:Date.now(),local:false,av:'-',ask:0,stop:false,n:0,r:null,why:'',na:0,a:[],pl:0,iv:setInterval(function(){if(sx&&Date.now()-sx.t0>=MAX_SEC*1000){if(!sx.why)sx.why='T';spStop()}},500)};spUi(true);spAvail(sx)}
+/* قبل أي محاولة محلية: الرد لازم "available" بالضبط. الدالة مو موجودة / رمت / تأخرت / أي رد ثاني ← الخدمة العادية على طول */
+function spAvail(x){var done=false;function go(v){if(done)return;done=true;if(sx!==x||x.stop)return;x.av=v;x.local=v==='a';spRun()}
+try{if(typeof SR.available!=='function')return go('-');SR.available({langs:['ar-KW'],processLocally:true}).then(function(v){go(DG_AV.hasOwnProperty(v)?DG_AV[v]:'x')},function(){go('e')});setTimeout(function(){go('w')},1500)}catch(e){go('e')}}
+function spDrop(r){try{r.onresult=r.onerror=r.onend=r.onstart=r.onaudiostart=r.onsoundstart=r.onspeechstart=r.onnomatch=r.onaudioend=null;r.abort()}catch(e){}}
+/* العادية رفضت (not-allowed، الضغطة ضاعت): زر "تكلم" بالنافذة، والبدء بعد ضغطه. مرة وحدة بالجلسة */
+function spAsk(x){mkbox('تحويل الكلام لنص لعون');var row=el('div','mr');box.appendChild(el('div','mt','اضغط "تكلم" عشان عون يسمعك'));box.appendChild(row);
+var a=el('button','ok','تكلم');a.type='button';a.id='spTalk';a.onclick=function(){if(sx!==x||x.stop)return;spUi(true);spRun()};row.appendChild(a);
+var c=el('button','no','إلغاء');c.type='button';c.id='spNo';c.onclick=function(){end('cancel')};row.appendChild(c)}
 function spRun(){
 var r,x=sx;try{r=new SR()}catch(e){return end('speech')}
 r.lang='ar-KW';r.interimResults=true;r.continuous=!/Android/i.test(navigator.userAgent);
-var local=x.local&&('processLocally' in r);if(local)r.processLocally=true; /* التحويل داخل الجهاز أول إذا المتصفح يدعمه */
+var local=x.local&&('processLocally' in r);if(local)r.processLocally=true; /* داخل الجهاز بس بعد ما available قالت إن العربي موجود */
 x.r=r;x.cur='';
-var q=dgTry(x,r,local);
+var q=dgTry(x,r,local),wd=0,dead=false;
+/* المحلية فشلت: الخدمة العادية مرة وحدة (x.local ما يرجع true)، بكائن جديد بعد ما القديم ينقطع */
+function back(){if(dead||sx!==x||x.r!==r)return;dead=true;clearTimeout(wd);x.local=false;spDrop(r);setTimeout(function(){if(sx===x&&x.r===r&&!x.stop)spRun()},200)}
 r.onresult=function(e){if(sx!==x||x.r!==r)return;if(q.R<9)q.R++;var f='',i='',k,a,t;for(k=0;k<e.results.length;k++){a=e.results[k];t=a&&a[0]&&typeof a[0].transcript==='string'?a[0].transcript:'';if(a&&a.isFinal)f+=' '+t;else i+=' '+t}var all=join(f,i);if(all){x.cur=all;x.got=true}send({kabd:1,op:'mic',t:'text',text:join(x.base,x.cur),fin:false})};
-r.onerror=function(e){if(sx!==x||x.r!==r)return;var c=e&&e.error;q.X=DG_ERR.indexOf(c)+1||9;if(c==='no-speech'||c==='aborted')return;if(c==='not-allowed'||c==='audio-capture')return end('denied');if(local){x.local=false;return}end(c==='network'?'net':c==='service-not-allowed'?'denied':'speech')};
-r.onend=function(){if(sx!==x||x.r!==r)return;q.E=1;q.W=Math.round((Date.now()-q.t0)/1000);x.base=join(x.base,x.cur);x.cur='';if(x.stop||Date.now()-x.t0>=MAX_SEC*1000||++x.n>60){if(!x.why)x.why=x.n>60?'R':'T';return spDone()}if(local&&!x.got)x.local=false;spRun()};
-try{r.start()}catch(e){q.T=DG_EXC[e&&e.name]||'x';if(local){x.local=false;return spRun()}end('speech')}}
+r.onerror=function(e){if(sx!==x||x.r!==r)return;var c=e&&e.error;q.X=DG_ERR.indexOf(c)+1||9;clearTimeout(wd);if(c==='aborted')return;if(local&&(c!=='no-speech'||!x.got))return back();if(c==='no-speech')return;
+if(c==='not-allowed'&&!x.ask){x.ask=1;dead=true;spDrop(r);return spAsk(x)}
+if(c==='not-allowed'||c==='audio-capture')return end('denied');end(c==='network'?'net':c==='service-not-allowed'?'denied':'speech')};
+r.onend=function(){if(sx!==x||x.r!==r)return;clearTimeout(wd);q.E=1;q.W=Math.round((Date.now()-q.t0)/1000);x.base=join(x.base,x.cur);x.cur='';if(x.stop||Date.now()-x.t0>=MAX_SEC*1000||++x.n>60){if(!x.why)x.why=x.n>60?'R':'T';return spDone()}if(local&&!x.got)x.local=false;spRun()};
+try{r.start()}catch(e){q.T=DG_EXC[e&&e.name]||'x';if(local){x.local=false;return spRun()}return end('speech')}
+/* حارس الوقت: ولا onstart ولا onerror ولا onend بعد start ← فشل (المحلية ترجع للعادية، والعادية ترجع للتسجيل) */
+wd=setTimeout(function(){if(sx!==x||x.r!==r||dead||q.S||q.A||q.R||q.E||q.X)return;q.H=1;if(local)return back();end('speech')},local?3000:8000)}
 function spStop(){var x=sx;if(!x||x.stop)return;x.stop=true;if(!x.why)x.why='S';try{x.r.stop()}catch(e){return spDone()}setTimeout(function(){if(sx===x)spDone()},2500)}
 function spDone(){if(!sx)return;var t=join(sx.base,sx.cur);if(!t)return end('speech');send({kabd:1,op:'mic',t:'text',text:t,fin:true});clean()}
 function spKill(){var x=sx;if(!x)return;sx=null;clearInterval(x.iv);try{x.r.onresult=x.r.onerror=x.r.onend=x.r.onstart=x.r.onaudiostart=x.r.onsoundstart=x.r.onspeechstart=x.r.onnomatch=x.r.onaudioend=null;x.r.abort()}catch(e){}}
-/* ---- تشخيص مؤقت للنص المباشر: ينشال بطلب التصليح الجاي ----
+/* ---- تشخيص مؤقت للنص المباشر: ينشال بطلب لحاله بعد ما صاحب المشروع يأكد إن النص المباشر اشتغل ----
  * جلسة خلصت بدون أي نتيجة (موب بالإلغاء ولا الاختفاء) ← نافذة بهالصفحة بس فيها رمز من حروف وأرقام ثابتة، تظل لين "إغلاق".
  * ما ينرسل لأي مكان، ولا ينحفظ، ولا يدخل فيه أي شي من نص الكلام (أعداد ورموز من قوائم ثابتة بس). */
 var DG_ERR=['no-speech','aborted','audio-capture','network','not-allowed','service-not-allowed','language-not-supported','bad-grammar'];
@@ -109,22 +125,21 @@ var DG_EXC={InvalidStateError:'i',NotAllowedError:'n',NotSupportedError:'s'},DG_
 var dg=null,gs=null; /* gs = آخر stream من التسجيل (بس عشان نعرف إذا للحين مفتوح) */
 function micOpen(){try{return !!st||!!(gs&&gs.getTracks().some(function(t){return t.readyState==='live'}))}catch(e){return false}}
 function dgTry(x,r,local){ /* محاولة وحدة: أول ٥ وآخر وحدة */
-var q={i:++x.na,m:local?'L':'R',T:'0',S:0,A:0,N:0,P:0,R:0,M:0,U:0,E:0,X:0,W:'-',G:micOpen()?1:0,t0:Date.now()};
+var q={i:++x.na,m:local?'L':'R',T:'0',S:0,A:0,N:0,P:0,R:0,M:0,U:0,E:0,X:0,W:'-',G:micOpen()?1:0,H:0,t0:Date.now()};
 if('processLocally' in r)x.pl=1;
 if(x.a.length<6)x.a.push(q);else x.a[5]=q;
 r.onstart=function(){q.S=1};r.onaudiostart=function(){q.A=1};r.onsoundstart=function(){q.N=1};r.onspeechstart=function(){q.P=1};r.onnomatch=function(){q.M=1};r.onaudioend=function(){q.U=1};
 return q}
 function dgShow(x){
-var d={A:'-',Q:'-'},app=false;
+var d={A:x.av,Q:'-'},app=false;
 try{app=matchMedia('(display-mode: standalone),(display-mode: fullscreen),(display-mode: minimal-ui)').matches||navigator.standalone===true}catch(e){}
-var head='D1 K='+(window.SpeechRecognition?'S':'W')+' P='+x.pl,tail=' V='+(app?'A':'B'),end2=' Z='+(x.why||'E')+' N='+x.na;
-var rows=x.a.map(function(q){return q.i+q.m+' T'+q.T+' S'+q.S+' A'+q.A+' N'+q.N+' P'+q.P+' R'+q.R+' M'+q.M+' U'+q.U+' E'+q.E+' X'+q.X+' W'+q.W+' G'+q.G});
+var head='D2 K='+(window.SpeechRecognition?'S':'W')+' P='+x.pl,tail=' V='+(app?'A':'B'),end2=' Z='+(x.why||'E')+' N='+x.na;
+var rows=x.a.map(function(q){return q.i+q.m+' T'+q.T+' S'+q.S+' A'+q.A+' N'+q.N+' P'+q.P+' R'+q.R+' M'+q.M+' U'+q.U+' E'+q.E+' X'+q.X+' W'+q.W+' G'+q.G+' H'+q.H});
 if(!dg){dg=el('div','dg');dg.setAttribute('role','dialog');dg.setAttribute('aria-label','رمز التشخيص');document.body.appendChild(dg)}
 dg.textContent='';dg.hidden=false;
 var code=el('div','dc'),c=el('button','','إغلاق');c.type='button';c.id='dgClose';c.onclick=function(){dg.hidden=true;dg.textContent=''};
 dg.appendChild(el('div','mt','رمز التشخيص — صوّر الشاشة'));dg.appendChild(code);dg.appendChild(c);
 function draw(){code.textContent=[head+' A='+d.A+tail+' Q='+d.Q+end2].concat(rows).join('\n')}
-try{if(typeof SR.available==='function'){d.A='w';SR.available({langs:['ar-KW'],processLocally:true}).then(function(v){d.A=DG_AV.hasOwnProperty(v)?DG_AV[v]:'x';draw()},function(){d.A='e';draw()})}}catch(e){d.A='e'}
 try{d.Q='w';navigator.permissions.query({name:'microphone'}).then(function(p){var v=p&&p.state;d.Q=DG_PM.hasOwnProperty(v)?DG_PM[v]:'x';draw()},function(){d.Q='-';draw()})}catch(e){d.Q='-'}
 draw()}
 function mkbox(label){if(!box){box=el('div','mic');box.setAttribute('role','dialog');document.body.appendChild(box)}box.setAttribute('aria-label',label);box.textContent='';box.hidden=false}
